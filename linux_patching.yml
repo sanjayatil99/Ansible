@@ -1,0 +1,51 @@
+---
+  - hosts: Dev_server
+
+    tasks:
+      - name: copy process script
+        copy:
+          src: /root/ansible/app.sh
+          dest: /root/app.sh
+      - name: Check Application Process status
+        shell: sh /root/app.sh
+        ignore_errors: true
+        register: APP_status
+
+      - name: Print Applcation process status
+        debug: var=APP_status.stdout
+
+      - name: Stop Playbook if Application process running
+        fail: msg= "Application is running on {{ inventory_hostname }}. Can not Proceed with OS Patching"
+        when: APP_status.stdout == "Application_Process_Running"
+
+
+      - name: Update OS if Application process is not running
+        shell: yum update -y
+        when: APP_status.stdout == "Application_Process_Not_Running"
+
+      - name: Check if Reboot is needed for server after OS patching
+        shell: KERNEL_NEW=$(rpm -q --last kernel |head -1 | awk '{print $1}' | sed 's/kernel-//'); KERNEL_CURRENT=$(uname -r); if [[ $KERNEL_NEW != $KERNEL_CURRENT ]]; then echo "Server_Does_Needs_Reboot"; else echo "Server_Doesn't_Needs_Reboot"; fi
+        register: reboot_clearance 
+
+      - name: Reboot of Server
+        command: init 6 
+        async: 0
+        poll: 0
+        when: reboot_clearance.stdout == "Server_Does_Needs_Reboot"
+        register: reboot_started
+        ignore_errors: true
+
+      - name: Waiting till Server come up after reboot
+        pause:
+          minutes: 3
+
+      - name: Check the Client status if it is avaialble for ssh
+        local_action:
+          module: wait_for
+            host={{ inventory_hostname }}
+            port=22
+            delay=15
+            timeout=300
+            state=started
+        when: reboot_started| changed        
+      
