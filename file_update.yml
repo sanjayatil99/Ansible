@@ -1,0 +1,16 @@
+---
+  - hosts: dev
+    tasks:
+      - name: Copy file
+        copy:
+          src: /root/.ssh/id_rsa.pub
+          dest: /root/.ssh/authorized_keys
+          backup: yes
+      - name: Add mappings to /etc/hosts
+        blockinfile:
+          path: /etc/hosts
+          block: |
+            192.168.1.55 ansible-master
+          marker: "# {mark} ANSIBLE MANAGED BLOCK {{ item.name }}"
+        
+          
