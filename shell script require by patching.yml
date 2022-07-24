@@ -1,0 +1,6 @@
+#bash script for patching.yml (pre-requsite)
+
+if ps -ef | egrep "[o]racle" > /dev/null;
+then echo "Application_Process_Running";
+else echo "Application_Process_Not_Running";
+fi
